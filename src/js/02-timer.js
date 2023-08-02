@@ -1,84 +1,80 @@
-// Import the required libraries
-import flatpickr from "flatpickr";
-import "flatpickr/dist/flatpickr.min.css";
+ import flatpickr from "flatpickr";
+  import "flatpickr/dist/flatpickr.min.css";
+  import Notiflix from 'notiflix';
 
-// Get elements from the DOM
-const dateTimePicker = document.getElementById("datetime-picker");
-const startButton = document.querySelector('[data-start]');
-const daysElement = document.querySelector('[data-days]');
-const hoursElement = document.querySelector('[data-hours]');
-const minutesElement = document.querySelector('[data-minutes]');
-const secondsElement = document.querySelector('[data-seconds]');
+  const datetimePicker = document.getElementById("datetime-picker");
+  const startButton = document.querySelector('[data-start]');
+  const daysValue = document.querySelector('[data-days]');
+  const hoursValue = document.querySelector('[data-hours]');
+  const minutesValue = document.querySelector('[data-minutes]');
+  const secondsValue = document.querySelector('[data-seconds]');
 
-// Function to format time values with leading zeros
-function addLeadingZero(value) {
-  return value.toString().padStart(2, "0");
-}
+  function addLeadingZero(value) {
+    return value.toString().padStart(2, '0');
+  }
 
-// Function to update the timer display
-function updateTimerDisplay({ days, hours, minutes, seconds }) {
-  daysElement.textContent = addLeadingZero(days);
-  hoursElement.textContent = addLeadingZero(hours);
-  minutesElement.textContent = addLeadingZero(minutes);
-  secondsElement.textContent = addLeadingZero(seconds);
-}
+  function convertMs(ms) {
+    const second = 1000;
+    const minute = second * 60;
+    const hour = minute * 60;
+    const day = hour * 24;
 
-// Function to calculate time difference and start the countdown
-function startCountdown(targetDate) {
-  const interval = setInterval(() => {
-    const currentTime = new Date().getTime();
-    const timeDifference = targetDate - currentTime;
+    const days = Math.floor(ms / day);
+    const hours = Math.floor((ms % day) / hour);
+    const minutes = Math.floor(((ms % day) % hour) / minute);
+    const seconds = Math.floor((((ms % day) % hour) % minute) / second);
 
-    if (timeDifference <= 0) {
-      clearInterval(interval);
-      updateTimerDisplay({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-      alert("Countdown finished!");
+    return { days, hours, minutes, seconds };
+  }
+ function updateTimer() {
+    const selectedDate = new Date(datetimePicker.value);
+    const currentDate = new Date();
+
+    if (selectedDate <= currentDate) {
+      Notiflix.Notify.failure("Please choose a date in the future");
+      clearInterval(timerInterval);
+      startButton.disabled = true;
       return;
     }
 
-    const timeObject = convertMs(timeDifference);
-    updateTimerDisplay(timeObject);
-  }, 1000);
-}
+    const remainingTime = selectedDate - currentDate;
+    const { days, hours, minutes, seconds } = convertMs(remainingTime);
 
-// Function to convert milliseconds to days, hours, minutes, and seconds
-function convertMs(ms) {
-  const second = 1000;
-  const minute = second * 60;
-  const hour = minute * 60;
-  const day = hour * 24;
+    daysValue.textContent = addLeadingZero(days);
+    hoursValue.textContent = addLeadingZero(hours);
+    minutesValue.textContent = addLeadingZero(minutes);
+    secondsValue.textContent = addLeadingZero(seconds);
 
-  const days = Math.floor(ms / day);
-  const hours = Math.floor((ms % day) / hour);
-  const minutes = Math.floor(((ms % day) % hour) / minute);
-  const seconds = Math.floor((((ms % day) % hour) % minute) / second);
-
-  return { days, hours, minutes, seconds };
-}
-
-// Initialize flatpickr with options
-const options = {
-  enableTime: true,
-  time_24hr: true,
-  defaultDate: new Date(),
-  minuteIncrement: 1,
-  onClose(selectedDates) {
-    const selectedDate = selectedDates[0];
-
-    if (selectedDate < new Date()) {
-      flatpickr.clear(dateTimePicker);
-      alert("Please choose a date in the future.");
+    if (remainingTime <= 0) {
+      clearInterval(timerInterval);
       startButton.disabled = true;
-    } else {
-      startButton.disabled = false;
     }
-  },
-};
+  }
+let timerInterval;
 
-flatpickr(dateTimePicker, options);
+function startTimer() {
+    if (!timerInterval) {
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+        startButton.disabled = true;
+    }
+}
 
-// Event listener for the start button
-startButton.addEventListener("click", () => {
-  const selectedDate = flatpickr.parseDate(dateTimePicker.value);
-  startCountdown(selectedDate);
+flatpickr("#datetime-picker", {
+    enableTime: true,
+    time_24hr: true,
+    defaultDate: new Date(),
+    minuteIncrement: 1,
+    onClose(selectedDates) {
+        const selectedDate = selectedDates[0];
+
+        if (selectedDate && selectedDate > new Date()) {
+            startButton.disabled = false;
+        }
+        else {
+            startButton.disabled = true;
+        }
+    }
 });
+
+startButton.addEventListener("click", startTimer);
